@@ -1,163 +1,69 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using TaskFlowApi.Data;
-using TaskFlowApi.Models;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using TaskFlowApi.Dtos;
-using Microsoft.AspNetCore.Mvc.Filters;
-using System;
+using TaskFlowApi.Models;
+using TaskFlowApi.Services.Contract;
 
 namespace TaskFlowApi.Controllers
 {
-
-    public class ValidateTaskExistsAttribute : ActionFilterAttribute
-    {
-        private readonly AppDbContext _context;
-
-        public ValidateTaskExistsAttribute(AppDbContext context)
-        {
-            _context = context;
-        }
-
-        public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
-        {
-            if (context.ActionArguments.ContainsKey("id") && context.ActionArguments["id"] is int id)
-            {
-                var taskItem = await _context.TaskItems.FindAsync(id);
-                if (taskItem == null)
-                {
-                    context.Result = new BadRequestObjectResult("Please provide a valid task ID.");
-                    return;
-                }
-            }
-
-            await next();
-        }
-    }
-
-    
     [Route("api/[controller]")]
     [ApiController]
     public class TasksController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly ITaskService _service;
 
-        public TasksController(AppDbContext context)
+        public TasksController(ITaskService service)
         {
-            _context = context;
-        }
-
-        // GET: api/Tasks
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<TaskItem>>> GetTaskItems(
-            [FromQuery] TaskItemStatus? status, 
-            [FromQuery] string? title,
-            [FromQuery] string? sortBy, string? sortOrder
-            )
-        {
-            var query = _context.TaskItems.AsQueryable();
-
-            if (status.HasValue)
-                query = query.Where(t => t.Status == status.Value);
-
-            if (!string.IsNullOrEmpty(title))
-                query = query.Where(t => t.Title.Contains(title));
-
-            if (!string.IsNullOrEmpty(sortBy))
-            {
-                bool ascending = sortOrder?.ToLower() == "asc";
-                query = sortBy.ToLower() switch
-                {
-                    "title" => ascending ? query.OrderBy(t => t.Title) : query.OrderByDescending(t => t.Title),
-                    "description" => ascending ? query.OrderBy(t => t.Description) : query.OrderByDescending(t => t.Description),
-                    "status" => ascending ? query.OrderBy(t => t.Status) : query.OrderByDescending(t => t.Status),
-                    "duedate" => ascending ? query.OrderBy(t => t.DueDate) : query.OrderByDescending(t => t.DueDate),
-                    _ => query
-                };
-            }
-
-            var tasks = await query.Select(t => new TaskSummaryDto
-            {
-                Title = t.Title
-            }).ToListAsync();
-
-            return Ok(tasks);
-        }
-
-        // GET: api/Tasks/5
-        [TypeFilter(typeof(ValidateTaskExistsAttribute))]
-        [HttpGet("{id}")]
-        public async Task<ActionResult<TaskItem>> GetTaskItem(int id)
-        {
-            var taskItem = await _context.TaskItems.FindAsync(id);
-
-            if (taskItem == null)
-            {
-                return NotFound();
-            }
-
-            return taskItem;
+            _service = service;
         }
 
         // POST: api/Tasks
         [HttpPost]
-        public async Task<ActionResult<TaskItem>> PostTaskItem(TaskItem taskItem)
+        public async Task<IActionResult> AddTask([FromBody] TaskDetailDto request)
         {
-            _context.TaskItems.Add(taskItem);
-            await _context.SaveChangesAsync();
+            await _service.CreateTaskAsync(request);
+            return Ok();
+        }
 
-            return CreatedAtAction(nameof(GetTaskItem), new { id = taskItem.Id }, taskItem);
+        // GET: api/Tasks
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<TaskSummaryDto>>> GetTasks(
+            [FromQuery] TaskItemStatus? status,
+            [FromQuery] string? title,
+            [FromQuery] string? sortBy,
+            [FromQuery] string? sortOrder
+        )
+        {
+            var tasks = await _service.GetTasksAsync(status, title, sortBy, sortOrder);
+            return Ok(tasks);
+        }
+
+        // GET: api/Tasks/5
+        [HttpGet("{id}")]
+        public async Task<ActionResult<TaskDetailDto>> GetTask(int id)
+        {
+            var task = await _service.GetTaskByIdAsync(id);
+            if (task == null) return NotFound();
+            return Ok(task);
         }
 
         // PUT: api/Tasks/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutTaskItem(int id, TaskItem taskItem)
+        public async Task<IActionResult> UpdateTask(int id, [FromBody] TaskDetailDto request)
         {
-            if (id != taskItem.Id)
-            Console.WriteLine("ID mismatch: " + id + " != " + taskItem.Id);
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(taskItem).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!TaskItemExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
+            var updated = await _service.UpdateTaskAsync(id, request);
+            if (!updated) return NotFound();
             return NoContent();
         }
 
         // DELETE: api/Tasks/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteTaskItem(int id)
+        public async Task<IActionResult> DeleteTask(int id)
         {
-            var taskItem = await _context.TaskItems.FindAsync(id);
-            if (taskItem == null)
-            {
-                return NotFound();
-            }
-
-            _context.TaskItems.Remove(taskItem);
-            await _context.SaveChangesAsync();
-
+            var deleted = await _service.DeleteTaskAsync(id);
+            if (!deleted) return NotFound();
             return NoContent();
-        }
-
-        private bool TaskItemExists(int id)
-        {
-            return _context.TaskItems.Any(e => e.Id == id);
         }
     }
 }
