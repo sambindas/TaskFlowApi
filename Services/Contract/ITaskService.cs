@@ -7,10 +7,10 @@ namespace TaskFlowApi.Services.Contract
 
     public interface ITaskService
     {
-        Task CreateTaskAsync(TaskDetailDto request);
+        Task CreateTaskAsync(CreateTaskDto request);
         Task<List<TaskSummaryDto>> GetTasksAsync(TaskItemStatus? status = null, string? title = null, string? sortBy = null, string? sortOrder = null);
-        Task<TaskDetailDto?> GetTaskByIdAsync(int id);
+        Task<CreateTaskDto?> GetTaskByIdAsync(int id);
         Task<bool> DeleteTaskAsync(int id);
-        Task<bool> UpdateTaskAsync(int id, TaskDetailDto request);
+        Task<bool> UpdateTaskAsync(int id, CreateTaskDto request);
     }
 }

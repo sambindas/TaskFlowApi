@@ -20,7 +20,7 @@ namespace TaskFlowApi.Controllers
 
         // POST: api/Tasks
         [HttpPost]
-        public async Task<IActionResult> AddTask([FromBody] TaskDetailDto request)
+        public async Task<IActionResult> AddTask([FromBody] CreateTaskDto request)
         {
             await _service.CreateTaskAsync(request);
             return Ok();
@@ -41,7 +41,7 @@ namespace TaskFlowApi.Controllers
 
         // GET: api/Tasks/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<TaskDetailDto>> GetTask(int id)
+        public async Task<ActionResult<CreateTaskDto>> GetTask(int id)
         {
             var task = await _service.GetTaskByIdAsync(id);
             if (task == null) return NotFound();
@@ -50,7 +50,7 @@ namespace TaskFlowApi.Controllers
 
         // PUT: api/Tasks/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateTask(int id, [FromBody] TaskDetailDto request)
+        public async Task<IActionResult> UpdateTask(int id, [FromBody] CreateTaskDto request)
         {
             var updated = await _service.UpdateTaskAsync(id, request);
             if (!updated) return NotFound();

@@ -18,7 +18,7 @@ namespace TaskFlowApi.Services
             _context = context;
         }
 
-        public async Task CreateTaskAsync(TaskDetailDto request)
+        public async Task CreateTaskAsync(CreateTaskDto request)
         {
             var task = request.ToEntity();
             _context.TaskItems.Add(task);
@@ -56,12 +56,12 @@ namespace TaskFlowApi.Services
             }).ToListAsync();
         }
 
-        public async Task<TaskDetailDto?> GetTaskByIdAsync(int id)
+        public async Task<CreateTaskDto?> GetTaskByIdAsync(int id)
         {
             var task = await _context.TaskItems.FindAsync(id);
             if (task == null) return null;
 
-            return new TaskDetailDto
+            return new CreateTaskDto
             {
                 Id = task.Id,
                 Title = task.Title,
@@ -82,7 +82,7 @@ namespace TaskFlowApi.Services
             return true;
         }
 
-        public async Task<bool> UpdateTaskAsync(int id, TaskDetailDto request)
+        public async Task<bool> UpdateTaskAsync(int id, CreateTaskDto request)
         {
             var task = await _context.TaskItems.FindAsync(id);
             if (task == null) return false;
